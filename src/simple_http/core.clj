@@ -1,12 +1,31 @@
 (ns simple-http.core
-  (:require [org.httpkit.server :refer [run-server]]
-            [clj-time.core :as t]))
+  (:require [ring.adapter.jetty :as ring-jetty]
+            [reitit.ring :as ring]
+            [muuntaja.core :as m]
+            [reitit.ring.middleware.muuntaja :as muuntaja]))
+            
 
-(defn app [req]
+(use 'ring.adapter.jetty)
+
+(defn string-handler [_]
   {:status 200
-   :headers {"Content-Type" "text/html"}
-   :body    (str (t/time-now))})
+   :body "hey cowboy"})
 
-(defn -main [& args]
-  (run-server app {:port 8081})
-  (println "Server running at 8081"))
+(def app
+  (ring/ring-handler
+    (ring/router
+      ["/"
+       ["" {:get string-handler}]
+       ["/math"
+        {:post string-handler}]]
+      {:data {:muuntaja m/instance
+              :middleware [muuntaja/format-middleware]}})))
+                           
+(defn start []
+  (ring-jetty/run-jetty app {:port 3000
+                             :join? false}))
+
+(defn -main
+  [& args]
+  (start))
+  
